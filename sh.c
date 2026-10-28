@@ -13,6 +13,9 @@
 
 #define MAXARGS 10
 
+#define MAX_ALIAS 20
+#define MAX_LENGTH 100
+
 struct cmd {
   int type;
 };
@@ -141,6 +144,14 @@ getcmd(char *buf, int nbuf)
   return 0;
 }
 
+struct alias_entry {
+    char name[32];
+    char cmd[128];
+};
+
+struct alias_entry aliases[MAX_ALIAS];
+int alias_count = 0;
+
 int
 main(void)
 {
@@ -164,6 +175,72 @@ main(void)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
     }
+
+    // -------------------- Alias Command --------------------
+
+    // ----- Step 1: Checking and storing aliases -----
+    if (buf[0] == 'a' && buf[1] == 'l' && buf[2] == 'i' && buf[3] == 'a' && buf[4] == 's' && buf[5] == ' ') {
+
+      char *eq = strchr(buf, '=');
+      if (eq) {
+        *eq = 0; // Dividing the buffer into two sections before and after the '='
+        char *name = buf + 6; // Reading after the 'alias ' (6 chars) until the former '='
+        char *cmd = eq + 1;
+
+        // Removing the newline character
+        int len = strlen(cmd);
+        if (len > 0 && cmd[len - 1] == '\n')
+          cmd[len - 1] = 0;
+
+        // Checking if the alias name already exists
+        int found = 0;
+        for (int i = 0; i < alias_count; i++) {
+          if (!strcmp(aliases[i].name, name)) {
+            memmove(aliases[i].cmd, cmd, strlen(cmd) + 1);
+            found = 1;
+            break;
+          }
+        }
+
+        // Adding the new alias to the list of aliases
+        if (!found && alias_count < MAX_ALIAS) {
+          memmove(aliases[alias_count].name, name, strlen(name) + 1);
+          memmove(aliases[alias_count].cmd, cmd, strlen(cmd) + 1);
+          alias_count++;
+        }
+      }
+      continue;
+    }
+
+    // ----- Step 2: Replacing user's entered command with aliases if possible -----
+    char first_word[MAX_LENGTH];
+    int i = 0;
+
+    while (buf[i] != ' ' && buf[i] != '\n' && buf[i] != 0 && i < MAX_LENGTH - 1) {
+      first_word[i] = buf[i];
+      i++;
+    }
+    first_word[i] = 0; // Terminating the first_word
+
+    for (int j = 0; j < alias_count; j++) {
+      
+      if (!strcmp(aliases[j].name, first_word)) {
+        char new_buf[MAX_LENGTH];
+        memmove(new_buf, aliases[j].cmd, strlen(aliases[j].cmd) + 1);
+
+        // Adding possibly entered arguments to the end of buffer
+        if (buf[i] != 0) {
+          memmove(new_buf + strlen(new_buf), buf + i, strlen(buf + i) + 1);
+        }
+        else {
+          memmove(new_buf + strlen(new_buf), "\n", 2);
+        }
+
+        memmove(buf, new_buf, strlen(new_buf) + 1);
+        break;
+      }
+    }
+
     if(fork1() == 0)
       runcmd(parsecmd(buf));
     wait();
