@@ -175,6 +175,7 @@ UPROGS=\
 	_ln\
 	_ls\
 	_mkdir\
+	_rle\
 	_rm\
 	_sh\
 	_stressfs\
@@ -182,8 +183,8 @@ UPROGS=\
 	_wc\
 	_zombie\
 
-fs.img: mkfs README $(UPROGS)
-	./mkfs fs.img README $(UPROGS)
+fs.img: mkfs README $(UPROGS) input.txt
+	./mkfs fs.img README $(UPROGS) input.txt
 
 -include *.d
 
