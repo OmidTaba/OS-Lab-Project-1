@@ -16,6 +16,8 @@
 #define MAX_ALIAS 20
 #define MAX_LENGTH 100
 
+#define MAX_HISTORY 20
+
 struct cmd {
   int type;
 };
@@ -152,6 +154,43 @@ struct alias_entry {
 struct alias_entry aliases[MAX_ALIAS];
 int alias_count = 0;
 
+struct history_entry {
+  int id;
+  char cmd[128];
+};
+
+struct history_entry history[MAX_HISTORY];
+int hist_count = 0;
+int next_hist_id = 1;
+
+void addToHistory(char *cmd) {
+  if (cmd[0] == 0 || cmd[0] == '\n')
+    return;
+
+  if (hist_count == MAX_HISTORY)
+  {
+    // Shifting all the history entries to the left
+    for (int i = 0; i < MAX_HISTORY - 1; i++)
+      history[i] = history[i + 1];
+
+    hist_count--;
+  }
+
+  history[hist_count].id = next_hist_id++;
+
+  int len = strlen(cmd);
+  if (len >= sizeof(history[hist_count].cmd))
+    len = sizeof(history[hist_count].cmd) - 1;
+
+  memmove(history[hist_count].cmd, cmd, len);
+  history[hist_count].cmd[len] = 0; // Null terminating
+
+  if (len > 0 && history[hist_count].cmd[len - 1] == '\n')
+    history[hist_count].cmd[len - 1] = 0;
+
+  hist_count++;
+}
+
 int
 main(void)
 {
@@ -176,6 +215,115 @@ main(void)
       continue;
     }
 
+    // -------------------- History Expansion Command --------------------
+
+    // Step 1: Checking for the history command
+    if (buf[0] == 'h' && buf[1] == 'i' && buf[2] == 's' && buf[3] == 't' &&
+        buf[4] == 'o' && buf[5] == 'r' && buf[6] == 'y' &&
+       (buf[7] == '\n' || buf[7] == 0 || buf[7] == ' ')) {
+
+      if (hist_count == 0)
+        printf(1, "No command history.\n");
+      else
+        for (int i = 0; i < hist_count; i++)
+          printf(1, "%d. %s\n", history[i].id, history[i].cmd);
+
+      continue;
+    }
+
+    // Step 2: Doing history expansion
+    if (buf[0] == '!') {
+      char *target_cmd = 0;
+
+      int is_num = 1, curr = 1;
+      while (buf[curr] != ' ' && buf[curr] != '\n' && buf[curr] != 0) {
+        if (buf[curr] < '0' || buf[curr] > '9') {
+          is_num = 0; // Found non-digit character
+          break;
+        }
+        curr++;
+      }
+
+      // Condition 1: !!
+      if (buf[1] == '!') {
+        if(hist_count > 0)
+          target_cmd = history[hist_count - 1].cmd;
+      }
+
+      // Condition 2: !n
+      else if (is_num && curr > 1) {
+        int target_id = atoi(buf + 1);
+
+        for (int i = 0; i < hist_count; i++) {
+          if (target_id == history[i].id) {
+            target_cmd = history[i].cmd;
+            break;
+          }
+        }
+      }
+
+      // Condition 3: !prefix
+      else {
+        char prefix[64];
+        int j = 0;
+
+        // Extracting the prefix
+        while (buf[1 + j] != 0 && buf[1 + j] != '\n' && buf[1 + j] != ' ' && j < 63) {
+          prefix[j] = buf[1 + j];
+          j++;
+        }
+        prefix[j] = 0;
+
+        for (int i = hist_count - 1; i >= 0; i--) {
+          int match = 1, curr = 0;
+
+          while (prefix[curr] != 0) {
+            if (history[i].cmd[curr] != prefix[curr]) {
+              match = 0;
+              break;
+            }
+            curr++;
+          }
+
+          if (match) {
+            target_cmd = history[i].cmd;
+            break;
+          }
+        }
+      }
+
+      // Step 3: Checking for possibly entered arguments and adding them to buffer
+      if (target_cmd != 0) {
+        int skip = 1;
+        while (buf[skip] != ' ' && buf[skip] != '\n' && buf[skip] != 0)
+          skip++;
+
+        char expanded_buf[MAX_LENGTH];
+        memmove(expanded_buf, target_cmd, sizeof(expanded_buf));
+
+        if (buf[skip] != 0 && buf[skip] != '\n') {
+          int curr_len = strlen(expanded_buf);
+          memmove(expanded_buf + curr_len, buf + skip, sizeof(expanded_buf) - curr_len);
+        }
+        else {
+          int curr_len = strlen(expanded_buf);
+          expanded_buf[curr_len] = '\n';
+          expanded_buf[curr_len + 1] = 0;
+        }
+
+        printf(1, "%s", expanded_buf);
+
+        memmove(buf, expanded_buf, sizeof(buf));
+      }
+      else {
+        printf(2, "history: command not found\n");
+        continue;
+      }
+    }
+
+    // Step 4: Adding to history
+    addToHistory(buf);
+
     // -------------------- Alias Command --------------------
 
     // ----- Step 1: Checking and storing aliases -----
@@ -184,7 +332,7 @@ main(void)
       char *eq = strchr(buf, '=');
       if (eq) {
         *eq = 0; // Dividing the buffer into two sections before and after the '='
-        char *name = buf + 6; // Reading after the 'alias ' (6 chars) until the former '='
+        char *name = buf + 6; // Reading after the 'alias ' (6 chars) until the '='
         char *cmd = eq + 1;
 
         // Removing the newline character
@@ -220,10 +368,10 @@ main(void)
       first_word[i] = buf[i];
       i++;
     }
-    first_word[i] = 0; // Terminating the first_word
+    first_word[i] = 0; // null-terminating the first_word
 
     for (int j = 0; j < alias_count; j++) {
-      
+
       if (!strcmp(aliases[j].name, first_word)) {
         char new_buf[MAX_LENGTH];
         memmove(new_buf, aliases[j].cmd, strlen(aliases[j].cmd) + 1);
