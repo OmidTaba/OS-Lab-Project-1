@@ -1,0 +1,107 @@
+PASS      BLD-3   bootblock is exactly 512 bytes, ends with 0x55AA, starts with `cli`  (0.0s)
+PASS      BLD-4   first sector of xv6.img == bootblock  (0.0s)
+PASS      BLD-5   kernel ELF: i386, entry ~0x10000c, first PT_LOAD paddr 0x100000  (0.0s)
+PASS      BLD-6   Makefile UPROGS contains _rle and rle.c exists  (0.0s)
+PASS      BLD-7   rle.c uses open/read/write/close and the file names encoded.txt/decoded.txt  (0.0s)
+SKIP      BOOT-1  Group member names are printed on the console before the shell prompt  (0.7s)
+            pass --members "A,B,C" to check names automatically. Screen saved to /home/kimi777/OS-Lab-Project-1/boot_screen.txt
+PASS      CUR-1   Typing characters shows them in the input line  (2.4s)
+PASS      CUR-2   Left arrow x2, then insert 'X' in the middle  (2.8s)
+PASS      CUR-3   Right arrow moves back right after Left  (1.9s)
+PASS      CUR-4   Ctrl+Q goes to start, Ctrl+E goes to end  (2.4s)
+PASS      CUR-5   Backspace in the middle deletes the char BEFORE the cursor and keeps the rest  (2.2s)
+PASS      CUR-6   Boundaries: Left/Backspace at start and Right at end do nothing  (3.3s)
+PASS      CUR-7   Enter in the middle of the line executes the WHOLE buffer  (2.5s)
+PASS      CUR-8   Backspace on an empty prompt does not erase the '$ ' prompt  (2.9s)
+PASS      CUR-9   Hardware cursor position matches the logical cursor (VGA CRT registers)  (3.0s)
+WARN      CUR-10  Long input (130 chars) is capped, no overflow/crash  (64.2s)
+            timeout waiting for prompt. Screen:
+            |SeaBIOS (version 1.17.0-debian-1.17.0-1ubuntu1)
+            |iPXE (https://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+1EFC8EF0+1EF08EF0 CA00
+            |Booting from Hard Disk...
+            |----------------------------------------
+            |Group Members:
+            |1. Kimia Rohi Moghadam - 810103437
+            |2. Mahdiyar Hemmati - 810103549
+            |3. Omid Tabatabaeian - 810103469
+            |----------------------------------------
+            |cpu0: starting 0
+            |sb: size 1000 nblocks 941 ninodes 200 nlog 30 logstart 2 inodestart 32 bmap star
+            |t 58
+            |init: starting sh
+            |$ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            |xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+PASS      SEL-1   Select forward (Ctrl+I, Right*5, Ctrl+I) then Backspace deletes the selection  (4.5s)
+PASS      SEL-2   Select BACKWARD (second mark before first) selects the same range  (3.6s)
+PASS      SEL-3   Same start and end => nothing selected (Backspace deletes just 1 char)  (1.8s)
+PASS      SEL-4   Ctrl+C keeps the selection active (Backspace afterwards deletes it)  (4.7s)
+PASS      SEL-8   After deleting a selection the console is back to normal mode  (4.8s)
+PASS      SEL-9   Selected characters are highlighted (different VGA attribute); others are not  (4.3s)
+PASS      SEL-10  Highlight disappears after the selection operation finishes  (4.6s)
+PASS      SEL-13  Moving the cursor between the two marks works with Ctrl+Q / Ctrl+E too  (3.9s)
+WARN      SEL-14  Clipboard persists to the next prompt (copy on one line, paste on the next)  (3.9s)
+            cannot find command row for 'echo qq' (output too long?). Screen:
+            |SeaBIOS (version 1.17.0-debian-1.17.0-1ubuntu1)
+            |iPXE (https://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+1EFC8EF0+1EF08EF0 CA00
+            |Booting from Hard Disk...
+            |----------------------------------------
+            |Group Members:
+            |1. Kimia Rohi Moghadam - 810103437
+            |2. Mahdiyar Hemmati - 810103549
+            |3. Omid Tabatabaeian - 810103469
+            |----------------------------------------
+            |cpu0: starting 0
+            |sb: size 1000 nblocks 941 ninodes 200 nlog 30 logstart 2 inodestart 32 bmap star
+            |t 58
+            |init: starting sh
+            |$ ececho qq
+            |qq
+            |$
+PASS      ALIAS-1 alias hi=echo hello world ; `hi there` -> 'hello world there'  (6.3s)
+PASS      ALIAS-2 Redefining an alias replaces the old value  (7.4s)
+PASS      ALIAS-3 Only the FIRST word is replaced (alias name used later in the line is untouched)  (5.3s)
+PASS      ALIAS-4 Alias name must match the whole word (prefix/longer word does not match)  (4.9s)
+PASS      ALIAS-5 Everything after the first '=' belongs to the command (alias x=echo a=b)  (3.9s)
+PASS      ALIAS-6 Alias expansion is NOT recursive (one step only)  (6.2s)
+PASS      ALIAS-7 At least 10 aliases can coexist  (42.0s)
+PASS      ALIAS-8 Aliases are per shell session: fresh boot has none  (1.3s)
+PASS      HIST-1  `history` lists recent commands in order with increasing numbers  (7.2s)
+PASS      HIST-2  `!!` re-runs the last command and shows the expanded command first  (4.4s)
+PASS      HIST-3  `!n` runs the command with history number n  (6.2s)
+PASS      HIST-6  `!!`, `!n`, `!prefix` are never stored; only the expanded command is  (4.8s)
+PASS      HIST-7  Keeps >=10 recent commands, numbers keep increasing and never get renumbered  (27.3s)
+SKIP      HIST-8  `!n` with a number that was evicted from the window is an error  (23.4s)
+            history window >= 15, nothing was evicted
+PASS      RLE-1   `ls` lists rle (program was added to the build)  (1.3s)
+PASS      RLE-4   Round trip with digits, commas and spaces in the data  (14.0s)
+PASS      RLE-5   All-distinct and single chars: 'abc' -> a,1;b,1;c,1;  (8.7s)
+PASS      RLE-6   Two-digit run lengths: 12 x 'a' -> a,12;  and decode restores 12  (16.3s)
+PASS      RLE-7   Multi-line file (newline is just a character) round-trips  (18.7s)
+PASS      RLE-9   Invalid usage prints an error (no args, bad mode, missing file, extra arg, nonexistent file)  (19.3s)
+PASS      RLE-10  Failed commands do not create output files  (9.5s)
+WARN      RLE-11  Re-running encode with a SHORTER result leaves no leftover bytes from the older file  (18.6s)
+            stale bytes in encoded.txt: ['b,1;', ',1;;']
+PASS      COMB-1  Edit with cursor keys, then run (typo fixed in the middle) ; history stores the FINAL text  (5.1s)
+PASS      COMB-2  Alias + cursor editing: fix alias name by moving cursor  (5.3s)
+PASS      COMB-5  Edit a history command while typing it: '!ecc' -> Left, Backspace -> '!ec'  (3.4s)
+PASS      COMB-6  Order of expansion: history FIRST, alias SECOND  (5.7s)
+WARN      COMB-8  A pending selection mark does not leak into the next command line  (41.8s)
+            timeout waiting for prompt. Screen:
+            |SeaBIOS (version 1.17.0-debian-1.17.0-1ubuntu1)
+            |iPXE (https://ipxe.org) 00:03.0 CA00 PCI2.10 PnP PMM+1EFC8EF0+1EF08EF0 CA00
+            |Booting from Hard Disk...
+            |----------------------------------------
+            |Group Members:
+            |1. Kimia Rohi Moghadam - 810103437
+            |2. Mahdiyar Hemmati - 810103549
+            |3. Omid Tabatabaeian - 810103469
+            |----------------------------------------
+            |cpu0: starting 0
+            |sb: size 1000 nblocks 941 ninodes 200 nlog 30 logstart 2 inodestart 32 bmap star
+            |t 58
+            |init: starting sh
+            |$ abc
+PASS      FUZZ-2  Random mix of 70 edit operations (seed 2) vs. reference model  (32.7s)
+PASS      FUZZ-3  Random mix of 70 edit operations (seed 3) vs. reference model  (32.7s)
+
+Summary: 48 PASS, 2 SKIP, 4 WARN

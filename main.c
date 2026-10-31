@@ -34,6 +34,16 @@ main(void)
   startothers();   // start other processors
   kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
   userinit();      // first user process
+  
+  // ================= Boot Message =================
+  cprintf("\n----------------------------------------\n");
+  cprintf("Group Members:\n");
+  cprintf("1. Kimia Rohi Moghadam - 810103437\n");
+  cprintf("2. Mahdiyar Hemmati - 810103549\n");
+  cprintf("3. Omid Tabatabaeian - 810103469\n");
+  cprintf("----------------------------------------\n\n");
+  // ================================================
+
   mpmain();        // finish this processor's setup
 }
 

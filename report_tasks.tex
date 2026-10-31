@@ -1,0 +1,280 @@
+% !TEX program = xelatex
+\documentclass[12pt,a4paper]{article}
+
+%---------------------------------------------------------------
+% Packages (xepersian must be loaded last, hyperref just before it)
+%---------------------------------------------------------------
+\usepackage{amsmath,amssymb}
+\usepackage[top=2.5cm,bottom=2.5cm,left=2.2cm,right=2.2cm]{geometry}
+\usepackage{array,tabularx,booktabs}
+\usepackage[table]{xcolor}
+\usepackage{listings}
+\usepackage[hidelinks,bookmarks=false]{hyperref}
+\usepackage{xepersian}
+
+%---------------------------------------------------------------
+% Fonts
+%---------------------------------------------------------------
+\settextfont{Vazirmatn}
+\setlatintextfont{Vazirmatn}
+\setlatinmonofont[Scale=0.88]{DejaVu Sans Mono}
+\setdigitfont{Vazirmatn}
+
+%---------------------------------------------------------------
+% Typography
+%---------------------------------------------------------------
+\renewcommand{\baselinestretch}{1.3}
+\setlength{\parskip}{0.4em}
+\setlength{\parindent}{0pt}
+\emergencystretch=3em
+
+%---------------------------------------------------------------
+% Helper macros
+%---------------------------------------------------------------
+% inline code / keys (always left-to-right, monospaced)
+\newcommand{\code}[1]{\lr{\texttt{#1}}}
+% arrow between steps: in an RTL document the flow goes right to left,
+% so the arrow points left. The normal space makes it breakable.
+\newcommand{\step}{\ $\leftarrow$\ }
+% caption under a code listing (Persian text must stay outside the LTR box)
+\newcommand{\codecaption}[1]{\begin{center}\small #1\end{center}}
+
+%---------------------------------------------------------------
+% Colors and listing style
+%---------------------------------------------------------------
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.96,0.96,0.96}
+\definecolor{passgreen}{rgb}{0,0.45,0.15}
+
+\lstdefinestyle{mystyle}{
+	backgroundcolor=\color{backcolour},
+	commentstyle=\color{codegreen},
+	keywordstyle=\color{magenta},
+	numberstyle=\tiny\color{codegray},
+	stringstyle=\color{codepurple},
+	basicstyle=\ttfamily\footnotesize,
+	breakatwhitespace=false,
+	breaklines=true,
+	keepspaces=true,
+	numbers=left,
+	numbersep=6pt,
+	showspaces=false,
+	showstringspaces=false,
+	showtabs=false,
+	tabsize=2,
+	frame=single,
+	rulecolor=\color{black!20},
+	xleftmargin=1.6em,
+	framexleftmargin=1.4em,
+	aboveskip=0.6em,
+	belowskip=0.2em
+}
+\lstset{style=mystyle}
+
+%---------------------------------------------------------------
+% Title
+%---------------------------------------------------------------
+\title{\textbf{گزارش آزمایشگاه سیستم‌های عامل}\\[0.4em]\large پروژه اول: آشنایی با هسته سیستم‌عامل \lr{xv6}}
+\author{
+	کیمیا روحی مقدم - ۸۱۰۱۰۳۴۳۷ \\
+	مهدیار همتی - ۸۱۰۱۰۳۵۴۹ \\
+	امید طباطبائیان - ۸۱۰۱۰۳۴۶۹
+}
+\date{پاییز ۱۴۰۵}
+
+\begin{document}
+	
+	\maketitle
+	
+	%===============================================================
+	\section{اضافه کردن پیام اعضای گروه به پیام بوت}
+	
+	\subsection{شرح مسئله}
+	هدف این بخش، تغییر سورس‌کد هسته سیستم‌عامل \lr{xv6} به گونه‌ای است که در فرآیند راه‌اندازی (\lr{Boot}) سیستم‌عامل و پیش از بارگذاری و نمایش اعلان خط فرمان پوسته (\lr{Shell Prompt})، نام و شماره دانشجویی اعضای گروه در کنسول چاپ شود.
+	
+	\subsection{تحلیل فنی و محل تغییرات}
+	سیستم‌عامل \lr{xv6} پس از اجرای کدهای راه‌انداز در \code{bootasm.S} و \code{entry.S}، وارد تابع \code{main()} در فایل \code{main.c} می‌شود. در انتهای تابع \code{main(void)} و بلافاصله پس از ایجاد پردازه اول کاربر (\code{userinit()}) و قبل از فراخوانی \code{mpmain()} کد چاپ اعضا قرار گرفت:
+	
+	\begin{latin}
+		\begin{lstlisting}[language=C]
+			userinit();      // first user process
+			
+			// ================= Boot Message =================
+			cprintf("\n----------------------------------------\n");
+			cprintf("Group Members:\n");
+			cprintf("1. Kimia Rohi Moghadam - 810103437\n");
+			cprintf("2. Mahdiyar Hemmati - 810103549\n");
+			cprintf("3. Omid Tabatabaeian - 810103469\n");
+			cprintf("----------------------------------------\n\n");
+			// ================================================
+			
+			mpmain();        // finish this processor's setup
+		\end{lstlisting}
+	\end{latin}
+	\codecaption{تغییرات اعمال‌شده در تابع \code{main} در فایل \code{main.c}}
+	
+	تابع \code{cprintf} پیام را همزمان به خروجی \lr{CGA} و درگاه سریال \lr{UART} ارسال می‌کند. قرار گرفتن کد درون تابع \code{main()} تضمین می‌کند که این پیام فقط یک بار توسط پردازنده اصلی (\lr{CPU0}) چاپ شود و پردازنده‌های ثانویه آن را تکرار نکنند.
+	
+	%===============================================================
+	\section{قابلیت جابه‌جایی مکان‌نما در کنسول}
+	
+	در فایل \textbf{\code{console.c}}، مدیریت ورودی از طریق بافر حلقوی \code{input} انجام می‌پذیرد. فیلد موقعیت مکان‌نما (\code{cpos}) به این ساختار اضافه شد که همواره شرط $\mathtt{input.w} \le \mathtt{input.cpos} \le \mathtt{input.e}$ را برآورده می‌سازد. مکان‌نمای سخت‌افزاری \lr{CGA} با استفاده از ثبات‌های ۱۴ و ۱۵ درگاه \lr{CRT} جابه‌جا شده و توالی‌های اسکیپ \lr{ANSI} ($\leftarrow$ و $\rightarrow$) از طریق یک ماشین حالت پردازش می‌شوند.
+	
+	%===============================================================
+	\section{قابلیت انتخاب، رونوشت و جای‌گذاری}
+	
+	این قابلیت امکان تعامل پیشرفته با متن سطر جاری را از طریق کلیدهای \code{Ctrl+I} (شروع و پایان انتخاب)، \code{Ctrl+C} (کپی در حافظه موقت بدون لغو انتخاب) و \code{Ctrl+V} (جای‌گذاری متن کپی‌شده) فراهم می‌کند. متن انتخابی به صورت معکوس (\lr{Reverse Video / Highlight}) هم در حافظه \lr{CGA} با ویژگی \code{0x7000} و هم در ترمینال \lr{UART} با کدهای \code{\textbackslash 033[7m} تا \code{\textbackslash 033[0m} برجسته می‌گردد. همچنین عملیات‌های حذف با \code{Backspace} و جایگزینی با فشردن کاراکتر جدید به همراه بازترسیم دقیق سطر توسط تابع \code{redraw\_line} پیاده‌سازی شده است.
+	
+	%===============================================================
+	\section{پاسخ به سؤال ۲۵ (تحلیل ساختار \lr{input} با \lr{GDB})}
+	
+	\subsection{نقش کلی ساختار \lr{input} و متغیرهای \lr{r}، \lr{w} و \lr{e} در نسخه اولیه \lr{xv6}}
+	ساختار \code{input} در هسته \lr{xv6} نقش یک بافر حلقوی (\lr{Circular FIFO Buffer}) با اندازه ۱۲۸ بایت (\code{INPUT\_BUF = 128}) را ایفا می‌کند و وظیفه همگام‌سازی بر مبنای الگوی \textbf{تولیدکننده-مصرف‌کننده (\lr{Producer-Consumer})} بین وقفه‌های ورودی سخت‌افزار (در \code{consoleintr}) و فراخوانی‌های سیستمی خواندن فضای کاربر (در \code{consoleread}) را بر عهده دارد:
+	\begin{itemize}
+		\item \textbf{\code{input.r} (\lr{Read Index}):} اندیس خواندن توسط پردازه‌های کاربر (مانند شل). مشخص می‌کند پردازه تا کدام خانه از بافر را خوانده است.
+		\item \textbf{\code{input.w} (\lr{Write Index}):} نشان‌دهنده مرز آخرین خط تایید‌شده (\lr{Committed}) است. تا زمانی که کلید \lr{Enter} فشرده نشود، مقدار \code{w} تغییر نکرده و پردازه خواننده در حالت خواب (\lr{sleep}) منتظر می‌ماند. با فشرده شدن \lr{Enter}، مقدار $\mathtt{w} = \mathtt{e}$ شده و پردازه بیدار می‌شود (\lr{wakeup}).
+		\item \textbf{\code{input.e} (\lr{Edit Index}):} اندیس انتهای خط در حال ویرایش. با ورود هر کاراکتر یک واحد افزایش یافته و با \lr{Backspace} یک واحد کاهش می‌یابد.
+		\item \textbf{رابطه پایستاری:}
+		\[
+		\mathtt{input.r} \le \mathtt{input.w} \le \mathtt{input.e}
+		\quad \text{و} \quad
+		\mathtt{input.e} - \mathtt{input.r} < 128
+		\]
+	\end{itemize}
+	
+	\subsection{تغییر مقادیر هنگام وارد کردن کاراکتر و فشردن \lr{Enter}}
+	فرض کنید وضعیت اولیه به صورت $r = 0,\ w = 0,\ e = 0$ باشد و شل در \code{consoleread} منتظر ورودی باشد:
+	\begin{enumerate}
+		\item \textbf{ورود کاراکتر \code{'l'}:} در خانه \code{input.buf[0]} قرار گرفته و $e=1$ می‌شود ($r=0,\ w=0,\ e=1$). شل همچنان خواب است.
+		\item \textbf{ورود کاراکتر \code{'s'}:} در خانه \code{input.buf[1]} قرار گرفته و $e=2$ می‌شود ($r=0,\ w=0,\ e=2$).
+		\item \textbf{فشردن \lr{Enter} (\code{\textbackslash n}):} در خانه \code{input.buf[2]} ذخیره شده، $e=3$ می‌شود و چون کاراکتر خط جدید دریافت شد، خط تایید می‌گردد:
+		\[
+		\mathtt{input.w} = \mathtt{input.e} = 3
+		\]
+		سپس تابع \code{wakeup} فراخوانی می‌شود. وضعیت در این لحظه: $r=0,\ w=3,\ e=3$.
+		\item \textbf{خواندن توسط شل:} شل بیدار شده و ۳ بایت را می‌خواند؛ به ازای هر بایت مقدار $r$ افزایش یافته تا به $w$ برسد:
+		\[
+		r = 3, \quad w = 3, \quad e = 3
+		\]
+	\end{enumerate}
+	
+	\subsection{\lr{State} و متغیرهای جدید اضافه‌شده به پیاده‌سازی}
+	\begin{enumerate}
+		\item \textbf{\code{uint cpos}:} ثبت موقعیت دقیق مکان‌نما درون سطر جاری در بازه $[\mathtt{input.w},\ \mathtt{input.e}]$ جهت پشتیبانی از ویرایش درون‌خطی و درج در میانه متن.
+		\item \textbf{\code{static int esc\_state}:} ماشین حالت برای تشخیص توالی‌های اسکیپ سه بایتی \lr{ANSI} ($\leftarrow$ و $\rightarrow$) در ترمینال لینوکس/\lr{WSL}.
+		\item \textbf{\code{static char clipboard[INPUT\_BUF]} و \code{clip\_len}:} حافظه موقت کلیپ‌بورد برای نگهداری متن کپی‌شده با \code{Ctrl+C} و پیست با \code{Ctrl+V}.
+		\item \textbf{\code{static int sel\_active}:} پرچم تعیین بازه؛ با اولین \code{Ctrl+I} فعال شده و تا دومین \code{Ctrl+I} ورودی‌ها را فقط به کلیدهای مکان‌نما محدود می‌کند.
+		\item \textbf{\code{static int has\_selection}:} پرچم فعال بودن انتخاب نهایی که متن انتخابی را روی کنسول هایلایت می‌نماید.
+		\item \textbf{\code{static uint sel\_anchor}، \code{sel\_start}، \code{sel\_end}:} نگهداری نقاط شروع و مرزهای انتخابی جهت پشتیبانی از انتخاب مستقیم و معکوس.
+	\end{enumerate}
+	
+	\subsection{بررسی عملی با \lr{Breakpoint} در \lr{GDB}}
+	با قرار دادن نقطه توقف روی تابع \code{consoleintr} در فایل \code{console.c}:
+	
+	\begin{latin}
+		\begin{lstlisting}
+			(gdb) b consoleintr
+			Breakpoint 1 at 0x80100790: file console.c, line 235.
+		\end{lstlisting}
+	\end{latin}
+	
+	کاربر عبارت \code{echo os} را وارد کرده و با ۲ بار کلید $\leftarrow$ مکان‌نما را روی حرف \code{'o'} قرار می‌دهد. سپس کلمه \code{os} با دو بار \code{Ctrl+I} انتخاب و با \code{Ctrl+C} کپی می‌گردد. خروجی چاپ متغیرها در \lr{GDB} به صورت زیر مشاهده شد:
+	
+	\begin{latin}
+		\begin{lstlisting}
+			(gdb) print input
+			$1 = {
+				buf = "echo os", '\000' <repeats 120 times>,
+				r = 0,
+				w = 0,
+				e = 7,
+				cpos = 5
+			}
+			
+			(gdb) print has_selection
+			$2 = 1
+			
+			(gdb) print sel_start
+			$3 = 5
+			
+			(gdb) print sel_end
+			$4 = 7
+			
+			(gdb) print clipboard
+			$5 = "os", '\000' <repeats 125 times>
+			
+			(gdb) print clip_len
+			$6 = 2
+		\end{lstlisting}
+	\end{latin}
+	
+	\textbf{تحلیل خروجی:} مقدار $\mathtt{cpos}=5$ بازگشت صحیح مکان‌نما به حرف \code{'o'} (اندیس ۵ رشته ۷ کاراکتری \code{echo os}) را اثبات می‌کند. همچنین مقادیر $\mathtt{sel\_start}=5$ و $\mathtt{sel\_end}=7$ و $\mathtt{clip\_len}=2$ نشان‌دهنده انتخاب و کپی دقیق کلمه \code{os} در حافظه کلیپ‌بورد همراه با فعال ماندن هایلایت ($\mathtt{has\_selection}=1$) است.
+	
+	%===============================================================
+	\section{سناریوهای آزمون، تست‌کیس‌های ترکیبی و دلایل انتخاب}
+	
+	طبق نیازمندی‌های پروژه، تمام قابلیت‌ها علاوه بر کارکرد مستقل باید به صورت ترکیبی نیز هماهنگ عمل کنند. در ادامه تست‌کیس‌های ترکیبی طراحی‌شده به همراه منطق انتخاب و نتایج آن‌ها تشریح شده است:
+	
+	\begin{table}[!ht]
+		\centering
+		\caption{جدول تست‌کیس‌های ترکیبی و ارزیابی جامع پیاده‌سازی}
+		\label{tab:tests}
+		{\footnotesize
+			\renewcommand{\baselinestretch}{1.0}\selectfont
+			\renewcommand{\arraystretch}{1.6}
+			\setlength{\tabcolsep}{4pt}
+			\sloppy
+			\begin{tabularx}{\textwidth}{@{}%
+					>{\centering\arraybackslash}p{0.6cm}%
+					>{\arraybackslash}X%
+					>{\arraybackslash}X%
+					>{\centering\arraybackslash}p{1.7cm}%
+					>{\arraybackslash}X%
+					>{\centering\arraybackslash}p{1.5cm}@{}}
+				\toprule
+				\rowcolor{black!8}
+				\textbf{\lr{\#}} & \textbf{نام تست‌کیس} & \textbf{ورودی آزمون} & \textbf{خروجی} & \textbf{دلیل انتخاب (\lr{Rationale})} & \textbf{وضعیت} \\
+				\midrule
+				۱ & کپی، حرکت و پیست در انتها &
+				\code{echo cat }\step\code{Ctrl+I}\step ۴ بار چپ\step\code{Ctrl+I}\step\code{Ctrl+C}\step\code{Ctrl+E}\step\code{Ctrl+V} &
+				\code{cat cat} &
+				بررسی عدم تخریب نشانگر و بازه انتخابی پس از کپی، انتقال با \code{Ctrl+E} و تکثیر صحیح در انتهای سطر. &
+				{\color{passgreen}\textbf{پاس شد}} \\
+				\midrule
+				۲ & ترکیب با قابلیت نام مستعار (\lr{Alias}) &
+				\code{alias hi=echo hello}\step\code{hi} &
+				\code{hello} &
+				اطمینان از سازگاری کامل لایه بافر کنسول با پردازش و بسط \lr{Alias} پیاده‌سازی‌شده در پوسته. &
+				{\color{passgreen}\textbf{پاس شد}} \\
+				\midrule
+				۳ & ترکیب با تاریخچه (\lr{History}) &
+				\code{echo first}\step\code{!!} &
+				\code{first} &
+				بررسی جای‌گیری مستقیم دستورات بازخوانی‌شده با \code{!!} در کنسول و امکان ویرایش مجدد آن‌ها. &
+				{\color{passgreen}\textbf{پاس شد}} \\
+				\midrule
+				۴ & انتخاب معکوس و جایگزینی با رشته &
+				\code{echo bad}\step\code{Ctrl+I} در انتها\step ۳ بار چپ\step\code{Ctrl+I}\step تایپ \code{good} &
+				\code{good} &
+				اثبات خنثی بودن جهت انتخاب (از راست به چپ) و عملکرد صحیح حذف بازه و جایگزینی متن جدید. &
+				{\color{passgreen}\textbf{پاس شد}} \\
+				\midrule
+				۵ & درج و حذف در میانه سطر &
+				\code{echo hXllo}\step ۴ بار چپ\step\code{Backspace}\step تایپ \code{e} &
+				\code{hello} &
+				اطمینان از صحت شیفت بافر به چپ/راست و بازترسیم صحیح کاراکترهای بعدی روی صفحه. &
+				{\color{passgreen}\textbf{پاس شد}} \\
+				\midrule
+				۶ & آزمون شرایط مرزی و زیرریز (\lr{Underflow}) &
+				۵ بار چپ\step ۵ بار \code{Backspace}\step\code{Ctrl+Q/E} در خط خالی\step\code{echo safe} &
+				\code{safe} &
+				تضمین عدم وقوع خطای زیرریز اشاره‌گر یا \lr{Kernel Panic} در رخدادهای نامعتبر ابتدای سطر. &
+				{\color{passgreen}\textbf{پاس شد}} \\
+				\bottomrule
+			\end{tabularx}
+		}
+	\end{table}
+	
+\end{document}
