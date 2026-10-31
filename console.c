@@ -437,14 +437,15 @@ consoleintr(int (*getc)(void))
       if(clip_len > 0){
         int old_len = input.e - input.w;
         int screen_cpos = input.cpos;
-        if(has_selection && sel_start != sel_end){
-          int k = sel_end - sel_start;
-          for(uint i = sel_end; i < input.e; i++){
-            input.buf[(i - k) % INPUT_BUF] = input.buf[i % INPUT_BUF];
+        if(has_selection){
+          if(sel_start != sel_end){
+            int k = sel_end - sel_start;
+            for(uint i = sel_end; i < input.e; i++){
+              input.buf[(i - k) % INPUT_BUF] = input.buf[i % INPUT_BUF];
+            }
+            input.e -= k;
+            input.cpos = sel_start;
           }
-          input.e -= k;
-          input.cpos = sel_start;
-          screen_cpos = sel_start;
           has_selection = 0;
         }
         if(input.e - input.r + clip_len < INPUT_BUF){
@@ -493,44 +494,47 @@ consoleintr(int (*getc)(void))
     default:
       if(sel_active)
         break;
-      if(c != 0 && input.e-input.r < INPUT_BUF){
-        c = (c == '\r') ? '\n' : c;
-        if(c == '\n' || c == C('D')){
-          if(has_selection){
-            has_selection = 0;
-            redraw_line(input.cpos, input.e - input.w);
-          }
-          while(input.cpos < input.e){
-            char ch = input.buf[input.cpos % INPUT_BUF];
-            input.cpos++;
-            conscursorright(ch);
-          }
+      c = (c == '\r') ? '\n' : c;
+      if(c == '\n' || c == C('D')){
+        if(has_selection){
+          has_selection = 0;
+          redraw_line(input.cpos, input.e - input.w);
+        }
+        while(input.cpos < input.e){
+          char ch = input.buf[input.cpos % INPUT_BUF];
+          input.cpos++;
+          conscursorright(ch);
+        }
+        if(input.e - input.r < INPUT_BUF){
           input.buf[input.e++ % INPUT_BUF] = c;
-          input.cpos = input.e;
-          consputc(c);
-          input.w = input.e;
-          wakeup(&input.r);
         } else {
-          int old_len = input.e - input.w;
-          int screen_cpos = input.cpos;
-          if(has_selection && sel_start != sel_end){
+          input.buf[(input.e - 1) % INPUT_BUF] = c;
+        }
+        input.cpos = input.e;
+        consputc(c);
+        input.w = input.e;
+        wakeup(&input.r);
+      } else if(c != 0 && input.e - input.r < INPUT_BUF){
+        int old_len = input.e - input.w;
+        int screen_cpos = input.cpos;
+        if(has_selection){
+          if(sel_start != sel_end){
             int k = sel_end - sel_start;
             for(uint i = sel_end; i < input.e; i++){
               input.buf[(i - k) % INPUT_BUF] = input.buf[i % INPUT_BUF];
             }
             input.e -= k;
             input.cpos = sel_start;
-            screen_cpos = sel_start;
-            has_selection = 0;
           }
-          for(uint i = input.e; i > input.cpos; i--){
-            input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
-          }
-          input.buf[input.cpos % INPUT_BUF] = c;
-          input.e++;
-          input.cpos++;
-          redraw_line(screen_cpos, old_len);
+          has_selection = 0;
         }
+        for(uint i = input.e; i > input.cpos; i--){
+          input.buf[i % INPUT_BUF] = input.buf[(i - 1) % INPUT_BUF];
+        }
+        input.buf[input.cpos % INPUT_BUF] = c;
+        input.e++;
+        input.cpos++;
+        redraw_line(screen_cpos, old_len);
       }
       break;
     }
